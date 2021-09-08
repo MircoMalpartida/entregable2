@@ -1,0 +1,603 @@
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
+
+class Audience extends Model
+{
+
+    protected $guarded = ['id'];
+
+    use HasFactory;
+    //Relacion uno a muchos inversa
+    public function course(){
+        return $this->belongsTo('App\Models\Course');
+    }
+}
+--------------------------------------------
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
+
+class Category extends Model
+{
+    use HasFactory;
+
+
+    protected $guarded = ['id'];
+
+    //Relacion uno a muchos
+    public function courses(){
+        return $this->hasMany('App\Models\Course');
+    }
+}
+------------------------------------
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
+
+class Comment extends Model
+{
+    use HasFactory;
+
+    protected $guarded = ['id'];
+
+    public function commentable(){
+        return $this->morphTo();
+    }
+
+
+    //relacion uno a muchos inversa
+
+    public function user(){
+        return $this->belongsTo('App\Models\User');
+    }
+
+    //Relacion uno a muchos polimorfica
+
+    public function comments(){
+        return $this->morphMany('App\Models\Comment', 'commentable');
+    }
+
+    public function reactions(){
+        return $this->morphMany('App\Models\Reaction', 'reactionable');
+    }
+}
+--------------------------------------
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
+
+class Course extends Model
+{
+    use HasFactory;
+
+    protected $guarded = ['id', 'status'];
+    protected $withCount = ['students','reviews'];
+
+    const BORRADOR = 1;
+    const REVISION = 2;
+    const PUBLICADO = 3;
+
+    public function getRatingAttribute(){
+
+        if($this->reviews_count){
+            return round($this->reviews->avg('rating'),1); 
+        }else{
+            return 5;
+        }
+
+    }
+
+    //Querys Scopes
+    public function scopeCategory($query, $category_id){
+        if($category_id){
+            return $query->where('category_id', $category_id);
+        }
+    }
+
+    public function scopeLevel($query, $level_id){
+        if($level_id){
+            return $query->where('level_id', $level_id);
+        }
+    }
+
+    public function getRouteKeyName()
+    {
+        return "slug";
+    }
+
+    //relacion 1 a 1 
+    public function observation(){
+        return $this->hasOne('App\Models\Observation');
+    }
+
+    //Relacion uno a muchos
+
+    public function reviews(){
+        return $this->hasMany('App\Models\Review');
+    }
+
+    public function requirements(){
+        return $this->hasMany('App\Models\Requirement');
+    }
+
+    public function goals(){
+        return $this->hasMany('App\Models\Goal');
+    }
+
+    public function audiences(){
+        return $this->hasMany('App\Models\Audience');
+    }
+
+    public function sections(){
+        return $this->hasMany('App\Models\Section');
+    }
+
+    //Relacion uno a muchos inversa
+    public function teacher(){
+        return $this->belongsTo('App\Models\User', 'user_id');
+    }
+    
+    public function level(){
+        return $this->belongsTo('App\Models\Level');
+    }
+
+    public function category(){
+        return $this->belongsTo('App\Models\Category');
+    }
+
+    public function price(){
+        return $this->belongsTo('App\Models\Price');
+    }
+
+    //Relacion muchos a muchos
+    public function students(){
+        return $this->belongsToMany('App\Models\User');
+    }
+
+    //Relacion uno a uno polimorfica
+
+    public function image(){
+        return $this->morphOne('App\Models\Image', 'imageable');
+    }
+
+    //Relacion hasManyThrough
+    public function lessons(){
+        return $this->hasManyThrough('App\Models\Lesson', 'App\Models\Section');
+    }
+}
+--------------------------------
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
+
+class Description extends Model
+{
+    use HasFactory;
+
+    protected $guarded = ['id'];
+
+    //relacion uno a uno inversa
+
+    public function lesson(){
+        return $this->belongsTo('App\Models\Lesson');
+    }
+}
+-------------------------------
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
+
+class Goal extends Model
+{
+    use HasFactory;
+
+    protected $guarded = ['id'];
+
+    //Relacion uno a muchos inversa
+    public function course(){
+        return $this->belongsTo('App\Models\Course');
+    }
+}
+-----------------------------------
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
+
+class Image extends Model
+{
+    use HasFactory;
+
+    protected $guarded = ['id'];
+
+    public function imageable(){
+        return $this->morphTo();
+    }
+}
+-------------------------------------
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
+
+class Lesson extends Model
+{
+    use HasFactory;
+
+    protected $guarded = ['id'];
+
+    public function getCompletedAttribute(){
+       return $this->users->contains(auth()->user()->id);
+    }
+
+    //Relacion uno a uno
+
+    public function description(){
+        return $this->hasOne('App\Models\Description');
+    }
+
+    //Relacion uno a muchos inversa
+    public function section(){
+        return $this->belongsTo('App\Models\Section');
+    }
+
+    public function platform(){
+        return $this->belongsTo('App\Models\Platform');
+    }
+
+    //Relacion muchos a muchos
+    public function users(){
+        return $this->belongsToMany('App\Models\User');
+    }
+
+    //Relacion uno a uno polimorfica
+
+    public function resource(){
+        return $this->morphOne('App\Models\Resource', 'resourceable');
+    }
+
+    //Relacion uno a muchos polimorfica
+
+    public function comments(){
+        return $this->morphMany('App\Models\Comment', 'commentable');
+    }
+
+    public function reactions(){
+    return $this->morphMany('App\Models\Reaction', 'reactionable');
+    }
+
+}
+----------------------------
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
+
+class Level extends Model
+{
+    use HasFactory;
+
+    protected $guarded = ['id'];
+
+    //Relacion uno a muchos
+    public function courses(){
+        return $this->hasMany('App\Models\Course');
+    }
+}
+-------------------------
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
+
+class Observation extends Model
+{
+    use HasFactory;
+
+    protected $fillable = ['body', 'course_id'];
+
+    //relacion 1 a 1 inversa
+    public function course(){
+        return $this->belongsTo('App\Models\Course');
+    }
+}
+----------------------------
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
+
+class Platform extends Model
+{
+    use HasFactory;
+
+    protected $guarded = ['id'];
+
+    //Relacion uno a muchos
+    public function lessons(){
+        return $this->hasMany('App\Models\Lesson');
+    }
+
+}
+--------------------------
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
+
+class Price extends Model
+{
+    use HasFactory;
+
+    protected $guarded = ['id'];
+
+    //Relacion uno a muchos
+    public function courses(){
+        return $this->hasMany('App\Models\Course');
+    }
+}
+----------------------------
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
+
+class Profile extends Model
+{
+    use HasFactory;
+
+    protected $guarded = ['id'];
+
+    //Relacion uno a uno inversa
+
+    public function user(){
+        return $this->belongsTo('App\Models\User');
+    -------------------------------------
+ <?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
+
+class Reaction extends Model
+{
+    use HasFactory;
+
+    protected $guarded = ['id'];
+
+    const LIKE = 1;
+    const DISLIKE = 2;
+
+    
+    //relacion uno a muchos inversa
+
+    public function user(){
+        return $this->belongsTo('App\Models\User');
+    }
+
+
+    public function reactionable(){
+        return $this->morphTo();
+    }
+}
+-------------------------------------
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
+
+class Requirement extends Model
+{
+    use HasFactory;
+
+    protected $guarded = ['id'];
+
+    //Relacion uno a muchos inversa
+    public function course(){
+        return $this->belongsTo('App\Models\Course');
+    }
+}
+---------------------------------------
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
+
+class Resource extends Model
+{
+    use HasFactory;
+
+    protected $guarded = ['id'];
+
+    public function resourceable(){
+        return $this->morphTo();
+    }
+}
+------------------------------------------
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
+
+class Review extends Model
+{
+    use HasFactory;
+
+    protected $guarded = ['id'];
+
+    //Relacion uno a muchos inversa
+
+    public function user(){
+        return $this->belongsTo('App\Models\User');
+    }
+
+    public function course(){
+        return $this->belongsTo('App\Models\Course');
+    }
+}
+-------------------------------------------
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
+
+class Section extends Model
+{
+    use HasFactory;
+
+    protected $guarded = ['id'];
+
+    //Relacion uno a muchos
+
+    public function lessons(){
+        return $this->hasMany('App\Models\Lesson');
+    }
+
+
+    //Relacion uno a muchos inversa
+    public function course(){
+        return $this->belongsTo('App\Models\Course');
+    }
+}
+
+---------------------------------------
+<?php
+
+namespace App\Models;
+
+use Illuminate\Contracts\Auth\MustVerifyEmail;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Foundation\Auth\User as Authenticatable;
+use Illuminate\Notifications\Notifiable;
+use Laravel\Fortify\TwoFactorAuthenticatable;
+use Laravel\Jetstream\HasProfilePhoto;
+use Laravel\Sanctum\HasApiTokens;
+use Spatie\Permission\Traits\HasRoles;
+
+class User extends Authenticatable
+{
+    use HasApiTokens;
+    use HasFactory;
+    use HasProfilePhoto;
+    use Notifiable;
+    use TwoFactorAuthenticatable;
+    use HasRoles;
+
+    /**
+     * The attributes that are mass assignable.
+     *
+     * @var array
+     */
+    protected $fillable = [
+        'name',
+        'email',
+        'password',
+    ];
+
+    /**
+     * The attributes that should be hidden for arrays.
+     *
+     * @var array
+     */
+    protected $hidden = [
+        'password',
+        'remember_token',
+        'two_factor_recovery_codes',
+        'two_factor_secret',
+    ];
+
+    /**
+     * The attributes that should be cast to native types.
+     *
+     * @var array
+     */
+    protected $casts = [
+        'email_verified_at' => 'datetime',
+    ];
+
+    /**
+     * The accessors to append to the model's array form.
+     *
+     * @var array
+     */
+    protected $appends = [
+        'profile_photo_url',
+    ];
+
+    //Relacion uno a uno
+
+    public function profile(){
+        return $this->hasOne('App\Models\Profile');
+    }
+
+    //Relacion uno a muchos
+
+    public function courses_dictated(){
+        return $this->hasMany('App\Models\Course');
+    }
+
+    public function reviews(){
+        return $this->hasMany('App\Models\Review');
+    }
+
+    public function comments(){
+        return $this->hasMany('App\Models\Comment');
+    }
+
+    public function reactions(){
+        return $this->hasMany('App\Models\Reaction');
+    }
+
+    //Relacion muchos a muchos
+
+    public function courses_enrolled(){
+        return $this->belongsToMany('App\Models\Course');
+    }
+
+    public function lessons(){
+        return $this->belongsToMany('App\Models\Lesson');
+    }
+}
+------------------------------------
