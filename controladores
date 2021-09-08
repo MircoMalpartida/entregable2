@@ -1,0 +1,516 @@
+<?php
+
+namespace App\Http\Controllers\Admin;
+
+use App\Http\Controllers\Controller;
+use Illuminate\Http\Request;
+use App\Models\Category;
+
+class CategoryController extends Controller
+{
+    /**
+     * Display a listing of the resource.
+     *
+     * @return \Illuminate\Http\Response
+     */
+    public function index()
+    {
+        $categories = Category::all();
+
+        return view('admin.categories.index', compact('categories'));
+    }
+
+    /**
+     * Show the form for creating a new resource.
+     *
+     * @return \Illuminate\Http\Response
+     */
+    public function create()
+    {
+        return view('admin.categories.create');
+    }
+
+    /**
+     * Store a newly created resource in storage.
+     *
+     * @param  \Illuminate\Http\Request  $request
+     * @return \Illuminate\Http\Response
+     */
+    public function store(Request $request)
+    {
+        $request->validate([
+            'name' => 'required|unique:categories'
+        ]);
+
+        $category = Category::create($request->all());
+
+        return redirect()->route('admin.categories.edit' ,$category)->with('info', 'La categoria se agrego exitosamente!');
+    }
+
+    /**
+     * Display the specified resource.
+     *
+     * @param  int  $id
+     * @return \Illuminate\Http\Response
+     */
+    public function show(Category $category)
+    {
+        return view('admin.categories.show', compact('category'));
+    }
+
+    /**
+     * Show the form for editing the specified resource.
+     *
+     * @param  int  $id
+     * @return \Illuminate\Http\Response
+     */
+    public function edit(Category $category)
+    {
+        return view('admin.categories.edit', compact('category'));
+    }
+
+    /**
+     * Update the specified resource in storage.
+     *
+     * @param  \Illuminate\Http\Request  $request
+     * @param  int  $id
+     * @return \Illuminate\Http\Response
+     */
+    public function update(Request $request, Category $category)
+    {
+        $request->validate([
+            'name' => 'required|unique:categories,name,'. $category->id
+        ]);
+
+        $category->update($request->all());
+
+        return redirect()->route('admin.categories.edit' ,$category)->with('info', 'La categoria se actualizo exitosamente!');
+    }
+
+    /**
+     * Remove the specified resource from storage.
+     *
+     * @param  int  $id
+     * @return \Illuminate\Http\Response
+     */
+    public function destroy(Category $category)
+    {
+        $category->delete();
+
+        return redirect()->route('admin.categories.index')->with('info', 'La categoria se elimino exitosamente!');
+    }
+}
+--------------------------------------------------------
+<?php
+
+namespace App\Http\Controllers\Admin;
+
+use App\Http\Controllers\Controller;
+use Illuminate\Http\Request;
+use App\Models\Course;
+use Illuminate\Support\Facades\Mail;
+use App\Mail\ApprovedCourse;
+use App\Mail\RejectCourse;
+
+
+class CourseController extends Controller
+{
+    public function index(){
+        $courses = Course::where('status', 2)->paginate();
+
+        return view('admin.courses.index', compact('courses'));
+    }
+
+    public function show(Course $course){
+        $this->authorize('revision', $course);
+
+        return view('admin.courses.show', compact('course'));
+    }
+
+    public function approved(Course $course){
+
+        $this->authorize('revision', $course);
+
+        if (!$course->lessons || !$course->goals || !$course->requirements || !$course->image) {
+            return back()->with('info', 'No se puede publicar un curso incompleto!');
+        }else{
+
+        }
+
+        $course->status = 3;
+        $course->save();
+
+        //Enviar correo electronico
+        $mail = new ApprovedCourse($course);
+
+        Mail::to($course->teacher->email)->queue($mail);
+
+        return redirect()->route('admin.courses.index')->with('info', 'El curso se publico con exito!');
+    }
+
+    public function observation(Course $course){
+        return view('admin.courses.observation', compact('course'));
+    }
+
+    public function reject(Request $request ,Course $course){
+
+        $request->validate([
+            'body' => 'required',
+        ]);
+
+        $course->observation()->create($request->all());
+
+        $course->status = 1;
+        $course->save();
+
+        //Enviar correo electronico
+        $mail = new RejectCourse($course);
+
+        Mail::to($course->teacher->email)->queue($mail);
+
+        return redirect()->route('admin.courses.index')->with('info', 'El curso ha sido rechazado!');
+    }
+}
+-----------------------------------------
+<?php
+
+namespace App\Http\Controllers\Admin;
+
+use App\Http\Controllers\Controller;
+use Illuminate\Http\Request;
+
+class HomeController extends Controller
+{
+    public function index(){
+        return view('admin.index');
+    }
+}
+--------------------------------------
+<?php
+
+namespace App\Http\Controllers\Admin;
+
+use App\Http\Controllers\Controller;
+use Illuminate\Http\Request;
+use App\Models\Level;
+
+class LevelController extends Controller
+{
+    /**
+     * Display a listing of the resource.
+     *
+     * @return \Illuminate\Http\Response
+     */
+    public function index()
+    {
+        $levels = Level::all();
+
+        return view('admin.levels.index', compact('levels'));   
+    }
+
+    /**
+     * Show the form for creating a new resource.
+     *
+     * @return \Illuminate\Http\Response
+     */
+    public function create()
+    {
+        return view('admin.levels.create');   
+    }
+
+    /**
+     * Store a newly created resource in storage.
+     *
+     * @param  \Illuminate\Http\Request  $request
+     * @return \Illuminate\Http\Response
+     */
+    public function store(Request $request)
+    {
+        $request->validate([
+            'name' => 'required|unique:levels'
+        ]);
+
+        $level = Level::create($request->all());
+
+        return redirect()->route('admin.levels.edit' ,$level)->with('info', 'El Nivel se agrego exitosamente!');
+
+    }
+
+    /**
+     * Display the specified resource.
+     *
+     * @param  int  $id
+     * @return \Illuminate\Http\Response
+     */
+    public function show(Level $level)
+    {
+        return view('admin.levels.show', compact('level'));   
+    }
+
+    /**
+     * Show the form for editing the specified resource.
+     *
+     * @param  int  $id
+     * @return \Illuminate\Http\Response
+     */
+    public function edit(Level $level)
+    {
+        return view('admin.levels.edit', compact('level'));   
+    }
+
+    /**
+     * Update the specified resource in storage.
+     *
+     * @param  \Illuminate\Http\Request  $request
+     * @param  int  $id
+     * @return \Illuminate\Http\Response
+     */
+    public function update(Request $request, Level $level)
+    {
+        $request->validate([
+            'name' => 'required|unique:levels,name,'. $level->id
+        ]);    
+
+        $level = Level::create($request->all());
+
+        return redirect()->route('admin.levels.edit' ,$level)->with('info', 'El Nivel se actualizo exitosamente!');
+    }
+
+    /**
+     * Remove the specified resource from storage.
+     *
+     * @param  int  $id
+     * @return \Illuminate\Http\Response
+     */
+    public function destroy(Level $level)
+    {
+        $level->delete();
+
+        return redirect()->route('admin.levels.index')->with('info', 'El Nivel se elimino exitosamente!');
+     }
+}
+------------------------<?php
+
+namespace App\Http\Controllers\Admin;
+
+use App\Http\Controllers\Controller;
+use Illuminate\Http\Request;
+use Spatie\Permission\Models\Role;
+use Spatie\Permission\Models\Permission;
+
+class RoleController extends Controller
+{
+
+    public function __construct()
+    {
+        $this->middleware('can:Listar role')->only('index');
+        $this->middleware('can:Crear role')->only('create', 'store');
+        $this->middleware('can:Editar role')->only('edit', 'update');
+        $this->middleware('can:Eliminar role')->only('destroy');
+    }
+    /**
+     * Display a listing of the resource.
+     *
+     * @return \Illuminate\Http\Response
+     */
+    public function index()
+    {
+        $roles = Role::all();
+        return view('admin.roles.index', compact('roles'));
+    }
+
+    /**
+     * Show the form for creating a new resource.
+     *
+     * @return \Illuminate\Http\Response
+     */
+    public function create()
+    {
+        $permissions = Permission::all();
+        return view('admin.roles.create', compact('permissions'));
+    }
+
+    /**
+     * Store a newly created resource in storage.
+     *
+     * @param  \Illuminate\Http\Request  $request
+     * @return \Illuminate\Http\Response
+     */
+    public function store(Request $request)
+    {
+        $request->validate([
+            'name' => 'required|unique:roles',
+            'permissions' => 'required'
+        ]);
+        $role = Role::create([
+            'name' => $request->name
+        ]);
+
+        $role->permissions()->attach($request->permissions);
+
+        return redirect()->route('admin.roles.index')->with('info', 'Rol creado exitosamente');
+    }
+
+    /**
+     * Display the specified resource.
+     *
+     * @param  int  $id
+     * @return \Illuminate\Http\Response
+     */
+    public function show(Role $role)
+    {
+        return view('admin.roles.show', compact('role'));
+    }
+
+    /**
+     * Show the form for editing the specified resource.
+     *
+     * @param  int  $id
+     * @return \Illuminate\Http\Response
+     */
+    public function edit(Role $role)
+    {
+        $permissions = Permission::all();
+
+        return view('admin.roles.edit', compact('role','permissions'));
+    }
+
+    /**
+     * Update the specified resource in storage.
+     *
+     * @param  \Illuminate\Http\Request  $request
+     * @param  int  $id
+     * @return \Illuminate\Http\Response
+     */
+    public function update(Request $request, Role $role)
+    {
+        $request->validate([
+            'name' => 'required',
+            'permissions' => 'required'
+        ]);
+
+        $role->update([
+            'name' => $request->name,
+        ]);
+
+        $role->permissions()->sync($request->permissions);
+
+        return redirect()->route('admin.roles.edit', $role);
+    }
+
+    /**
+     * Remove the specified resource from storage.
+     *
+     * @param  int  $id
+     * @return \Illuminate\Http\Response
+     */
+    public function destroy(Role $role)
+    {
+        $role->delete();
+
+        return redirect()->route('admin.roles.index')->with('info', 'Rol eliminado exitosamente');
+    }
+}
+-----------------------------------
+<?php
+
+namespace App\Http\Controllers\Admin;
+
+use App\Http\Controllers\Controller;
+use App\Models\User;
+use Illuminate\Http\Request;
+use Spatie\Permission\Models\Role;
+
+class UserController extends Controller
+{
+    public function __construct()
+    {
+        $this->middleware('can:Leer usuarios')->only('index');
+        $this->middleware('can:Editar usuarios')->only('edit', 'update');
+    }
+
+    public function index()
+    {
+        return view('admin.users.index');
+    }
+
+    public function edit(User $user)
+    {
+        $roles = Role::all();
+
+        return view('admin.users.edit', compact('user', 'roles'));
+    }
+
+    public function update(Request $request, User $user)
+    {
+        $user->roles()->sync($request->roles);
+
+        return redirect()->route('admin.users.edit', $user);
+    }
+
+}
+-----------------------------------------
+<?php
+
+namespace App\Http\Controllers;
+
+use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
+use Illuminate\Foundation\Bus\DispatchesJobs;
+use Illuminate\Foundation\Validation\ValidatesRequests;
+use Illuminate\Routing\Controller as BaseController;
+
+class Controller extends BaseController
+{
+    use AuthorizesRequests, DispatchesJobs, ValidatesRequests;
+}
+-----------------------------------------
+<?php
+
+namespace App\Http\Controllers;
+
+use App\Models\Course;
+use Illuminate\Http\Request;
+
+class CourseController extends Controller
+{
+    public function index(){
+        return view('courses.index');
+    }
+
+    public function show(Course $course){
+
+        $this->authorize('published', $course);
+
+        $similares = Course::where('category_id', $course->category_id)
+                            ->where('id', '!=', $course->id)
+                            ->where('status', 3)
+                            ->latest('id')
+                            ->take(5)
+                            ->get();
+
+        return view('courses.show', compact('course', 'similares'));
+    }
+
+    public function enrolled(Course $course){
+        $course->students()->attach(auth()->user()->id);
+        return redirect()->route('courses.status', $course);
+    }
+}
+------------------------------------------
+<?php
+
+namespace App\Http\Controllers;
+
+use App\Models\Course;
+use Illuminate\Http\Request;
+
+
+class HomeController extends Controller
+{
+    public function __invoke()
+    {
+        $courses = Course::where('status','3')->latest('id')->get()->take(12);
+
+        return view('welcome', compact('courses'));
+    }
+}
